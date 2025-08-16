@@ -202,6 +202,42 @@ function CreateStop(entity)
     if debug_log then log(string.format('(OnEntityCreated) on_nth_tick(%d), on_train_changed_state, on_train_created registered', LtnSettings.dispatcher_nth_tick)) end
 end
 
+local function check_stop_name_uniqueness(event)
+    if not (event and event.entity and event.entity.valid) then return end
+    local entity = event.entity
+    if not (entity.type == 'train-stop') then return end
+
+    local newName = event.entity.backer_name
+    assert(newName)
+
+    local all_train_stops = game.get_player(1).surface.find_entities_filtered{type="train-stop"}
+    local counted_stops = {}
+
+    for _, item in ipairs(all_train_stops) do
+        local key = item.backer_name  -- you can choose your grouping key here
+        if key == newName then
+           counted_stops[key] = (counted_stops[key] or 0) + 1
+        end
+    end
+
+    if counted_stops[newName] > 1 then
+        -- collect candidates from backer_names that are not in counted_stops
+        local name_candidates = {}
+        for i = 1, #game.backer_names do
+            if not counted_stops[game.backer_names[i]] then
+                table.insert(name_candidates, game.backer_names[i])
+            end
+        end
+
+        math.randomseed(game.tick)
+        local idx = math.random(#name_candidates)
+        event.entity.backer_name = name_candidates[idx]
+        game.print('Renamed from: ' .. newName .. ' to: ' .. name_candidates[idx])
+    else
+        game.print('Name is unique: ' .. newName)
+    end
+end
+
 ---@param event EventData.on_built_entity | EventData.on_robot_built_entity | EventData.on_entity_cloned
 function OnEntityCreated(event)
     local entity = event.entity or event.destination
@@ -210,6 +246,7 @@ function OnEntityCreated(event)
     if ltn_stop_entity_names[entity.name] then
         CreateStop(entity)
     end
+    check_stop_name_uniqueness(event)
 end
 
 -- stop removed
