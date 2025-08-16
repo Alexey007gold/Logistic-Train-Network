@@ -57,10 +57,8 @@ function stream(input)
         local i = 0
         local result = function()
             i = i + 1
-            if i > len then
-                return nil
-            else
-                return input[i]
+            if i <= len then
+                return true, input[i]
             end
         end
         return result
@@ -79,9 +77,9 @@ function stream(input)
                 return nil
             else
                 while true do
-                    local e = it()
-                    if e ~= nil then
-                        return e
+                    local _, e = it()
+                    if _ then
+                        return _, e
                     else
                         i = i + 1
                         if i > len then
@@ -104,11 +102,9 @@ function stream(input)
             error("c must be of type function, but was a "..type(c))
         end
         local result = function()
-            local e = iter()
-            if e ~= nil then
-                c(e)
-            end
-            return e
+            local _, e = iter()
+            c(e)
+            return _, e
         end
         return result
     end
@@ -121,12 +117,12 @@ function stream(input)
             error("p must be of type function, but was a "..type(p))
         end
         local result = function()
-            local e = iter()
-            while e ~= nil do
+            local _, e = iter()
+            while _ do
                 if p(e) then
-                    return e
+                    return _, e
                 else
-                    e = iter()
+                    _, e = iter()
                 end
             end
             return nil
@@ -138,8 +134,8 @@ function stream(input)
         return function()
             local result = nil
             for i=1,n do
-                local e = iter()
-                if e == nil then
+                local _, e = iter()
+                if not _ then
                     return result
                 else
                     if result == nil then
@@ -160,9 +156,9 @@ function stream(input)
             error("f must be of type function, but was a "..type(f))
         end
         local result = function()
-            local e = iter()
-            if e ~= nil then
-                return f(e)
+            local _, e = iter()
+            if _ then
+                return _, f(e)
             else
                 return nil
             end
@@ -181,16 +177,21 @@ function stream(input)
         local result = function()
             while true do
                 if it == nil then
-                    local e = iter()
-                    if e == nil then
+                    local _, e = iter()
+                    if not _ then
                         return nil
                     else
-                        it = _iterator(f(e))
+                        local flattened = f(e)
+                        if flattened then
+                            it = _iterator(flattened)
+                        else
+                            it = nil
+                        end
                     end
                 else
-                    local e = it()
-                    if e ~= nil then
-                        return e
+                    local _, e = it()
+                    if _ then
+                        return _, e
                     else
                         it = nil
                     end
@@ -207,13 +208,13 @@ function stream(input)
     local function _distinct(iter)
         local processed = {}
         local result = function()
-            local e = iter()
-            while e ~= nil do
+            local _, e = iter()
+            while _ do
                 if processed[e]==nil then
                     processed[e]=true
-                    return e
+                    return _, e
                 else
-                    e = iter()
+                    _, e = iter()
                 end
             end
             return nil
@@ -238,8 +239,8 @@ function stream(input)
         local i = 0
         while i<num do
             i = i + 1
-            local e = iter()
-            if e == nil then
+            local _, e = iter()
+            if not _ then
                 break
             end
         end
@@ -248,7 +249,7 @@ function stream(input)
 
     local function _last(iter)
         local result = nil
-        for e in iter do
+        for _, e in iter do
             result = e
         end
         return result
@@ -261,7 +262,7 @@ function stream(input)
         if type(c)~="function" then
             error("c must be of type function, but was a "..type(c))
         end
-        for e in iter do
+        for _, e in iter do
             c(e)
         end
     end
@@ -269,7 +270,7 @@ function stream(input)
     local function _toarray(iter)
         local result = {}
         local i = 0
-        for e in iter do
+        for _, e in iter do
             i = i + 1
             result[i] = e
         end
@@ -296,7 +297,7 @@ function stream(input)
             error("f must be of type function, but was a "..type(f))
         end
         local result = {}
-        for e in iter do
+        for _, e in iter do
             local key = f(e)
             local values = result[key]
             if values == nil then
@@ -322,13 +323,13 @@ function stream(input)
                 if amatch[1] ~= nil then
                     return table.remove(amatch,1)
                 else
-                    local e = iter()
-                    while e ~= nil do
+                    local _, e = iter()
+                    while _ do
                         if f(e) == match then
-                            return e
+                            return _, e
                         else
                             table.insert(anomatch,e)
-                            e = iter()
+                            _, e = iter()
                         end
                     end
                     return nil
@@ -352,10 +353,10 @@ function stream(input)
             idx = 1
           end
           local it = itarr[idx]
-          local e = it()
-          if e ~= nil then
+          local _, e = it()
+          if _ then
             idx = idx + 1
-            return e
+            return _, e
           else
             table.remove(itarr, idx)
             len = #itarr
@@ -365,7 +366,7 @@ function stream(input)
         local nilcount = 0
         local result = {}
         for i,it in ipairs(itarr) do
-          local e = it()
+          local _, e = it()
           if e == nil then
             nilcount = nilcount + 1
           else
@@ -388,7 +389,7 @@ function stream(input)
             error("op must be of type function, but was a "..type(op))
         end
         local result = init
-        for e in iter do
+        for _, e in iter do
             result = op(result,e)
         end
         return result
@@ -411,7 +412,7 @@ function stream(input)
 
     local function _count(iter)
         local result = 0
-        for e in iter do
+        for _, e in iter do
             result = result + 1
         end
         return result
@@ -419,7 +420,7 @@ function stream(input)
 
     local function _max(iter,comp)
         local result = nil
-        for e in iter do
+        for _, e in iter do
             if result == nil or (comp ~= nil and comp(result,e)) or result < e then
                 result = e
             end
@@ -429,7 +430,7 @@ function stream(input)
 
     local function _min(iter,comp)
         local result = nil
-        for e in iter do
+        for _, e in iter do
             if result == nil or (comp ~= nil and comp(e,result)) or e < result then
                 result = e
             end
@@ -439,7 +440,7 @@ function stream(input)
 
     local function _sum(iter)
         local result = 0
-        for e in iter do
+        for _, e in iter do
             result = result + e
         end
         return result
@@ -448,7 +449,7 @@ function stream(input)
     local function _avg(iter)
         local sum = 0
         local count = 0;
-        for e in iter do
+        for _, e in iter do
             count = count + 1
             sum = sum + e
         end
@@ -466,7 +467,7 @@ function stream(input)
         if type(p)~="function" then
             error("p must be of type function, but was a "..type(p))
         end
-        for e in iter do
+        for _, e in iter do
             if not p(e) then
                 return false
             end
@@ -481,7 +482,7 @@ function stream(input)
         if type(p)~="function" then
             error("p must be of type function, but was a "..type(p))
         end
-        for e in iter do
+        for _, e in iter do
             if p(e) then
                 return true
             end
@@ -521,6 +522,9 @@ function stream(input)
             -- Returns a stream consisting of the elements of this stream that match the given predicate.
             filter = function(p)
                 return stream(_filter(iter,p))
+            end,
+            notnil = function()
+                return stream(_filter(iter, function(e) return e ~= nil end))
             end,
             -- Returns a stream consisting of chunks, made of n adjacent elements of the original stream.
             pack = function(n)
