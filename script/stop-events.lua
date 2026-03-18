@@ -210,14 +210,12 @@ local function check_stop_name_uniqueness(event)
     local newName = event.entity.backer_name
     assert(newName)
 
-    local all_train_stops = game.get_player(1).surface.find_entities_filtered{type="train-stop"}
+    local all_train_stops = entity.surface.find_entities_filtered{type="train-stop"}
     local counted_stops = {}
 
     for _, item in ipairs(all_train_stops) do
         local key = item.backer_name  -- you can choose your grouping key here
-        if key == newName then
-           counted_stops[key] = (counted_stops[key] or 0) + 1
-        end
+        counted_stops[key] = (counted_stops[key] or 0) + 1
     end
 
     if counted_stops[newName] > 1 then
@@ -243,10 +241,10 @@ function OnEntityCreated(event)
     local entity = event.entity or event.destination
     if not entity or not entity.valid then return end
 
+    check_stop_name_uniqueness(event)
     if ltn_stop_entity_names[entity.name] then
         CreateStop(entity)
     end
-    check_stop_name_uniqueness(event)
 end
 
 -- stop removed
